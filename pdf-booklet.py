@@ -2,13 +2,14 @@ import PyPDF2
 from PyPDF2 import PageObject, PaperSize
 import os, sys
 
+# Function to check and add a blank page if the number of pages is odd
 def make_even(input_pdf_path):
-    print("\n–– Verificando se o número de páginas é ímpar...")
+    print("\n–– Checking if the number of pages is odd.")
     pdf_reader = PyPDF2.PdfReader(input_pdf_path)
-    num_paginas = len(pdf_reader.pages)
+    num_pages = len(pdf_reader.pages)
 
-    if num_paginas % 2 == 1:
-        print("\tO número de páginas é ímpar. Adicionando uma página em branco...")
+    if num_pages % 2 == 1:
+        print("\tThe number of pages is odd. Adding a blank page to make it even.")
         pdf_writer = PyPDF2.PdfWriter()
         
         for page in pdf_reader.pages:
@@ -19,14 +20,13 @@ def make_even(input_pdf_path):
 
         with open(input_pdf_path, 'wb') as output_pdf_file:
             pdf_writer.write(output_pdf_file)
-        print("\tUma página em branco foi adicionada com sucesso.")
+        print("\tA blank page was successfully added.")
     else:
-        print("\tO número de páginas é par. Nenhuma ação necessária.")
+        print("\tThe number of pages is even. No action needed.")
 
-def reorganize_pdf(input_pdf_path, output_pdf_path, page_order, output_directory=sys.argv[1][:-4]):
-    print(f"\n–––– Reorganizando o PDF {input_pdf_path} com base na ordem especificada...")
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
+# Function to reorganize PDF pages based on a specified order
+def reorganize_pdf(input_pdf_path, output_pdf_path, page_order, output_directory = sys.argv[1][:-4]):
+    print(f"\n–––– Reorganizing the PDF {input_pdf_path} based on the specified order.")
 
     input_pdf_full_path = os.path.join(output_directory, input_pdf_path)
     output_pdf_full_path = os.path.join(output_directory, output_pdf_path)
@@ -42,10 +42,12 @@ def reorganize_pdf(input_pdf_path, output_pdf_path, page_order, output_directory
 
         with open(output_pdf_full_path, 'wb') as output_pdf:
             pdf_writer.write(output_pdf)
-    print(f"\tO PDF foi reorganizado e salvo em '{output_pdf_full_path}'.")
+            
+    print(f"\tThe PDF has been reorganized and saved to '{output_pdf_full_path}'.")
 
+# Function to create a booklet order for PDF pages
 def booklet_order(input_pdf_path, output_directory):
-    # print("\n–– Criando a ordem do livreto...")
+    # print("\n–– Creating the booklet order...")
     input_path = os.path.join(output_directory, input_pdf_path)
 
     with open(input_path, 'rb') as input_pdf:
@@ -55,78 +57,68 @@ def booklet_order(input_pdf_path, output_directory):
         l = [[t-2*i,2*i+1] for i in range(2*m)]
         return (l[:m], l[m:][::-1]) 
 
+# Function to split a PDF into smaller blocks
 def split_pdf(input_pdf_path, output_directory, block_size):
-    print("\n–– Dividindo o PDF em blocos menores...")
+    print("\n–– Splitting the PDF into smaller blocks...")
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
         with open(input_pdf_path, 'rb') as pdf_source:
             pdf_reader = PyPDF2.PdfReader(pdf_source)
-            num_paginas = len(pdf_reader.pages)
+            num_pages = len(pdf_reader.pages)
 
-            for i in range(0, num_paginas, block_size):
+            for i in range(0, num_pages, block_size):
                 pdf_writer = PyPDF2.PdfWriter()
-                for j in range(i, min(i + block_size, num_paginas)):
+                for j in range(i, min(i + block_size, num_pages)):
                     page = pdf_reader.pages[j]
                     pdf_writer.add_page(page)
 
-                nome_pdf_dividido = f'{(i+1)//block_size+1}.pdf'
-                caminho_pdf_dividido = os.path.join(output_directory, nome_pdf_dividido)
+                divided_pdf_name = f'{(i+1)//block_size+1}.pdf'
+                divided_pdf_path = os.path.join(output_directory, divided_pdf_name)
 
-                with open(caminho_pdf_dividido, 'wb') as pdf_output:
+                with open(divided_pdf_path, 'wb') as pdf_output:
                     pdf_writer.write(pdf_output)
 
-        print('\tDivisão concluída.')
+        print('\tDivision completed.')
     else:
-        print(f"A pasta {output_directory} já existe!\nPor favor, exclua a pasta existente ou renomeie o arquivo PDF utilizado.")
+        print(f"The folder {output_directory} already exists!\nPlease delete the existing folder or rename the used PDF file.")
         sys.exit(1)
 
+# Function to merge a list of PDF files
 def merge_pdf_list(pdf_names, chave):
-    print(f"\n–– Mesclando PDFs com a chave '{chave}'...")
-    pdf_writer = PyPDF2.PdfWriter()
+    print(f"\n–– Merging PDFs with the key '{chave}'...")
 
-    for pdf_name in pdf_names:
-        with open(pdf_name, 'rb') as pdf_file:
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                pdf_writer.add_page(page)
-            os.remove(pdf_name)
+    merger = PyPDF2.PdfMerger()
+
+    for pdf in pdf_names:
+        merger.append(pdf)
+        os.remove(pdf)
 
     pdf_output = f'{sys.argv[1][:-4]}_{chave}.pdf'
+    merger.write(pdf_output)
+    merger.close()
 
-    with open(pdf_output, 'wb') as output_pdf_file:
-        pdf_writer.write(output_pdf_file)
-
-    print(f'\tPDFs com a chave "{chave}" foram mesclados com sucesso.')
+    print(f'\tPDFs with the key "{chave}" have been successfully merged.')
 
 block_size = 24
 
-# Verifica se pelo menos um argumento foi passado
+# Check if at least one argument was passed
 if len(sys.argv) < 2:
-    print("Uso: python3 mypdf.py arquivo_pdf.pdf")
+    print("Usage: pdf-booklet input_pdf.pdf")
     sys.exit(1)
 
-# O primeiro argumento (sys.argv[0]) é o nome do script, então o arquivo PDF será o segundo argumento (sys.argv[1])
+# The first argument (sys.argv[0]) is the name of the script, so the PDF file will be the second argument (sys.argv[1])
 input_pdf_path = sys.argv[1]
 
-# Diretório de destino para os PDFs divididos
+# Output directory for split PDFs
 output_directory = input_pdf_path[:-4]+'/'
-
-# # Caminho para o PDF de entrada
-# input_pdf_path = 'meupdf.pdf'
 
 make_even(input_pdf_path)
 
 split_pdf(input_pdf_path, output_directory, block_size)
 
-# lista_arquivos = os.listdir(output_directory)
-# arquivos = [arquivo[:-4] for arquivo in lista_arquivos if os.path.isfile(os.path.join(output_directory, arquivo))]
-
 quantidade_arquivos = len(os.listdir(output_directory))
 arquivos = [str(i+1) for i in range(quantidade_arquivos)]
-
-# print('\n\n',arquivos,'\n\n')
 
 for arquivo in arquivos:
     ordem_frontal, ordem_verso = booklet_order(arquivo + '.pdf', output_directory)
@@ -140,7 +132,7 @@ for arquivo in arquivos:
     caminho_pdf_original = os.path.join(output_directory, arquivo + '.pdf')
     os.remove(caminho_pdf_original)
 
-# entra no diretório para que produza os arquivos finais
+# Change to the directory to produce the final files
 os.chdir(output_directory)
 
 arquivos_frontal = [str(i+1)+'_frontal.pdf' for i in range(quantidade_arquivos)]
@@ -148,3 +140,6 @@ merge_pdf_list(arquivos_frontal, 'frontal')
 
 arquivos_verso = [str(i+1)+'_verso.pdf' for i in range(quantidade_arquivos)]
 merge_pdf_list(arquivos_verso, 'verso')
+
+os.system(f'pdfjam --quiet --nup 2x1 {sys.argv[1][:-4]}_frontal.pdf --outfile {sys.argv[1][:-4]}_frontal_twopage.pdf --landscape')
+os.system(f'pdfjam --quiet --nup 2x1 {sys.argv[1][:-4]}_verso.pdf --outfile {sys.argv[1][:-4]}_verso_twopage.pdf --landscape')
